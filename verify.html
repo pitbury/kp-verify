@@ -76,6 +76,7 @@
     <div class="row" style="margin-top:16px">
       <textarea id="json" placeholder="…or paste the certificate JSON here" spellcheck="false"></textarea>
     </div>
+    <div class="note" id="loaded" style="display:none"></div>
     <div class="row">
       <button id="go">Verify</button>
       <label class="chk"><input type="checkbox" id="strict" checked> strict — reject anything short of a proof</label>
@@ -141,6 +142,37 @@
   const $ = (id) => document.getElementById(id);
   const drop = $("drop"), fileInput = $("file"), ta = $("json"), bar = $("bar");
   const box = $("result"), verdictEl = $("verdict"), reasonEl = $("reason"), metaEl = $("meta");
+  const loadedEl = $("loaded");
+
+  // Certificates run to half a megabyte. Putting that into a textarea makes the
+  // browser lay out every character on each keystroke, which is what made the
+  // page feel stuck. Large inputs are held here instead and summarised on screen.
+  const BIG = 100000;
+  let loadedText = null;
+
+  function setLoaded(text, label) {
+    if (text.length > BIG) {
+      loadedText = text;
+      ta.value = "";
+      ta.placeholder = "(a large certificate is loaded — press Verify)";
+      loadedEl.style.display = "block";
+      loadedEl.textContent = "loaded: " + label + " · " +
+        (text.length / 1024).toFixed(0) + " kB — held in memory, not shown here";
+    } else {
+      loadedText = null;
+      ta.value = text;
+      loadedEl.style.display = "none";
+    }
+  }
+
+  ta.addEventListener("input", () => {
+    loadedText = null;
+    loadedEl.style.display = "none";
+  });
+
+  function currentText() {
+    return (loadedText !== null ? loadedText : ta.value).trim();
+  }
 
   function show(ok, verdict, reason, meta) {
     box.className = "result show " + (ok ? "ok" : "bad");
@@ -164,7 +196,7 @@
 
   function readFile(f) {
     const r = new FileReader();
-    r.onload = () => { ta.value = r.result; run(); };
+    r.onload = () => { setLoaded(String(r.result), f.name); run(); };
     r.readAsText(f);
   }
 
@@ -173,7 +205,7 @@
       try {
         const res = await fetch(b.dataset.ex);
         if (!res.ok) throw new Error("HTTP " + res.status);
-        ta.value = await res.text();
+        setLoaded(await res.text(), b.dataset.ex.replace("examples/", ""));
         run();
       } catch (e) {
         show(false, "Could not load the example",
@@ -187,54 +219,94 @@
 
   $("go").addEventListener("click", run);
 
-  async function run() {
-    const text = ta.value.trim();
-    if (!text) { show(false, "Nothing to check", "Paste a certificate or drop a file."); return; }
+  function finish(res) {
+    const meta = [
+      res.claim,
+      res.bits ? res.bits + "-bit" : null,
+      res.links ? res.links + " chain links" : null,
+      "verified in " + res.seconds.toFixed(2) + " s, entirely in this browser"
+    ].filter(Boolean).join(" · ");
+    show(res.ok, res.ok ? "VALID" : "INVALID", res.why, meta);
+  }
 
+  function busy(on) {
+    $("go").disabled = on;
+    bar.style.display = on ? "block" : "none";
+    if (on) { bar.value = 0; box.className = "result"; }
+  }
+
+  // Preferred path: a worker thread, so the page never freezes.
+  let worker = null;
+  try {
+    worker = new Worker("kp-worker.js");
+  } catch (e) {
+    worker = null;   // file:// in some browsers — fall back below
+  }
+
+  if (worker) {
+    worker.onmessage = (ev) => {
+      const m = ev.data;
+      if (m.type === "progress") {
+        bar.value = Math.round(100 * m.done / m.total);
+      } else if (m.type === "done") {
+        busy(false); finish(m);
+      } else {
+        busy(false);
+        show(false, "INVALID", m.message);
+      }
+    };
+    worker.onerror = () => {
+      busy(false);
+      show(false, "Verification could not start",
+        "the worker thread failed to load",
+        "This happens when the page is opened straight from disk. Serve the " +
+        "folder with: python3 -m http.server");
+    };
+  }
+
+  async function run() {
+    const text = currentText();
+    if (!text) { show(false, "Nothing to check", "Paste a certificate or drop a file."); return; }
+    busy(true);
+
+    if (worker) {
+      worker.postMessage({ text, strict: $("strict").checked });
+      return;
+    }
+
+    // Fallback: same work on the main thread, yielding so the bar still moves.
     let cert;
     try {
       cert = KPVerify.parseJSON(text);
     } catch (e) {
-      show(false, "INVALID", "not valid JSON: " + e.message);
-      return;
+      busy(false); show(false, "INVALID", "not valid JSON: " + e.message); return;
     }
-
-    $("go").disabled = true;
-    bar.style.display = "block";
-    bar.value = 0;
-    box.className = "result";
-
     const started = performance.now();
     let lastPaint = 0;
     const onProgress = async (done, total) => {
       bar.value = Math.round(100 * done / total);
       const now = performance.now();
-      if (now - lastPaint > 60) {           // yield so the bar actually moves
+      if (now - lastPaint > 60) {
         lastPaint = now;
         await new Promise(r => setTimeout(r, 0));
       }
     };
-
     try {
       const [ok, why] = await KPVerify.verify(cert, {
         strict: $("strict").checked, onProgress
       });
-      const secs = ((performance.now() - started) / 1000).toFixed(2);
-      const links = cert.ecpp_chain ? cert.ecpp_chain.length : 0;
-      const bits = cert.N ? BigInt(cert.N).toString(2).length
-                 : (cert.p ? BigInt(cert.p).toString(2).length : null);
-      const meta = [
-        cert.claim || cert.format,
-        bits ? bits + "-bit" : null,
-        links ? links + " chain links" : null,
-        "verified in " + secs + " s, entirely in this browser"
-      ].filter(Boolean).join(" · ");
-      show(ok, ok ? "VALID" : "INVALID", why, meta);
+      finish({
+        ok, why,
+        seconds: (performance.now() - started) / 1000,
+        claim: cert.claim || cert.format,
+        links: cert.ecpp_chain ? cert.ecpp_chain.length : 0,
+        bits: cert.N ? BigInt(cert.N).toString(2).length
+            : (cert.p ? BigInt(cert.p).toString(2).length : null)
+      });
     } catch (e) {
       show(false, "INVALID", "verification error: " + (e.message || e));
     } finally {
-      $("go").disabled = false;
-      bar.style.display = "none";
+      busy(false);
     }
   }
 })();
