@@ -153,4 +153,4 @@ MIT. See `LICENSE`.
 
 ## Contact
 
-Piotr Burczyński — pitbury111@gmail.com
+Piotr Burylo — pitbury222@gmail.com
