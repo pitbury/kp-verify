@@ -14,7 +14,7 @@ several independent ways, and each corruption must be caught.
 
 Exit code 0 means every check passed.
 
-Copyright (c) 2026 Piotr Burczynski. MIT License.
+Copyright (c) 2026 IDEALPLACE algorithms. MIT License.
 """
 import copy
 import glob
