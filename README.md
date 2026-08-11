@@ -1,4 +1,4 @@
-# KP-verify
+# kp-verify
 
 An open verifier for portable cryptographic evidence.
 
@@ -152,4 +152,7 @@ implementation is the strongest thing that can happen to a format like this.
 MIT. See `LICENSE`.
 
 ## Contact
-RECHECK Piotr Burylo — pitbury222@gmail.com
+
+**Recheck** — don't take our word for it.
+
+Piotr Burylo · pitbury222@gmail.com · Norway

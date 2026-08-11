@@ -9,6 +9,8 @@
  *     node test-node.js
  *
  * Exit code 0 means every check passed.
+ *
+ * Copyright (c) 2026 RECHECK Piotr Burylo. MIT License.
  */
 const fs = require("fs");
 const path = require("path");
