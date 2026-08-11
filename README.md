@@ -152,4 +152,4 @@ implementation is the strongest thing that can happen to a format like this.
 MIT. See `LICENSE`.
 
 ## Contact
-IDEALPLACE algorithms — pitbury222@gmail.com
+Piotr Burylo — pitbury222@gmail.com
