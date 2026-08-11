@@ -25,7 +25,7 @@ DESIGN RULE: FAIL CLOSED
     question into a false answer. Earlier versions of this file did exactly
     that for one branch; the bug is described in SPEC.md under "History".
 
-Copyright (c) 2026 Piotr Burczynski. MIT License.
+Copyright (c) 2026 IDEALPLACE algorithms. MIT License.
 """
 import sys
 import json
