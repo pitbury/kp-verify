@@ -152,4 +152,4 @@ implementation is the strongest thing that can happen to a format like this.
 MIT. See `LICENSE`.
 
 ## Contact
-Piotr Burylo — pitbury222@gmail.com
+RECHECK Piotr Burylo — pitbury222@gmail.com
