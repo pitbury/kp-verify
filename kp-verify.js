@@ -12,7 +12,7 @@
  * projective coordinates so that no modular inverse is needed per operation,
  * which is what makes 4096-bit certificates practical in a browser.
  *
- * Copyright (c) 2026 Piotr Burylo. MIT License.
+ * Copyright (c) 2026 RECHECK Piotr Burylo. MIT License.
  */
 (function (root, factory) {
   if (typeof module === "object" && module.exports) module.exports = factory();
