@@ -34,7 +34,7 @@ CHAIN CLOSURE
     Anything else is rejected. A chain that merely ends in a probable prime is
     not a proof and this module will not say that it is.
 
-Copyright (c) 2026 IDEALPLACE algorithms. MIT License.
+Copyright (c) 2026 RECHECK Piotr Burylo. MIT License.
 """
 import gmpy2
 from gmpy2 import mpz, gcd, isqrt, invert
