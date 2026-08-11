@@ -1,4 +1,4 @@
-# kp-verify
+# KP-verify
 
 An open verifier for portable cryptographic evidence.
 
